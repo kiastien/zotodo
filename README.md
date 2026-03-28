@@ -1,8 +1,9 @@
 # Zotodo
 
 Add Todoist tasks for papers in Zotero. Install by downloading the [latest version](https://github.com/kiastien/zotodo/releases/latest).
-Scaffolded with the wonderful
-[`generator-zotero-plugin`](https://github.com/retorquere/generator-zotero-plugin).
+Scaffolded with
+[`zotero-plugin-template`](https://github.com/windingwind/zotero-plugin-template)
+and powered by [`zotero-plugin-scaffold`](https://github.com/northword/zotero-plugin-scaffold).
 
 ## Features
 - Automatically generate Todoist tasks when new papers are imported
@@ -19,6 +20,13 @@ Scaffolded with the wonderful
 2. In Zotero, go to Tools > Add-ons.
 3. Click the  gear icon in the upper right corner, and select "Install Add-On From File".
 4. Navigate to where you downloaded the Zotodo `.xpi` and select it.
+
+## Development
+1. Copy environment variables: `cp .env.example .env`
+2. Set your Zotero executable/profile path in `.env`
+3. Install deps: `npm install`
+4. Start dev mode with auto-reload: `npm start`
+5. Build production package: `npm run build`
 
 ## Configuration
 - See "Zotodo Preferences" in the "Tools" menu.

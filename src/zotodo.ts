@@ -481,7 +481,7 @@ class TodoistAPI {
   }
 }
 
-class Zotodo {
+export class Zotodo {
   private todoist: TodoistAPI
   public notifierID: any = null // Stored notifier ID
 
@@ -674,7 +674,7 @@ class Zotodo {
       // Conditional blocks: ?${token}:value?
       template = template.replace(/\?\$\{([^}]+)\}:([^?]*)\?/g, (match: string, token: string, value: string): string => data[token] ? value : '')
       // Conditional blocks: !${token}:value!
-      template = template.replace(/!$\{([^}]+)\}:([^!]*)!/g, (match: string, token: string, value: string): string => !data[token] ? value : '')
+      template = template.replace(/!\$\{([^}]+)\}:([^!]*)!/g, (match: string, token: string, value: string): string => !data[token] ? value : '')
       // Regular tokens: ${token}
       template = template.replace(/\$\{([^}]+)\}/g, (match: string, token: string): string => String(data[token] || ''))
       return template
@@ -719,6 +719,3 @@ class Zotodo {
   }
 }
 
-(globalThis as any).Zotodo = Zotodo
-
-export {}

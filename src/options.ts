@@ -8,14 +8,14 @@ class Options { // tslint:disable-line:variable-name
   public updatePreferenceWindow(which: string) {
     switch (which) {
       case 'init-all':
-        this.disablePref('include-note', 'note-format', false)
-        this.disablePref('set-due', 'due-string', false)
+        this.disablePref('include_note', 'note-format', false)
+        this.disablePref('set_due', 'due-string', false)
         break
-      case 'include-note':
-        this.disablePref('include-note', 'note-format', true)
+      case 'include_note':
+        this.disablePref('include_note', 'note-format', true)
         break
-      case 'set-due':
-        this.disablePref('set-due', 'due-string', true)
+      case 'set_due':
+        this.disablePref('set_due', 'due-string', true)
         break
       default:
         Zotero.logError(`Unexpected preference value: ${which}`)
@@ -24,7 +24,7 @@ class Options { // tslint:disable-line:variable-name
 
   private disablePref(setting_name: string, to_disable: string, revert: boolean) {
     let setting_val: boolean = (document.getElementById(
-      `pref-zotodo-${setting_name}`
+      setting_name
     ) as unknown as ZoteroBooleanPreference).value
     if (revert) {
       setting_val = !setting_val

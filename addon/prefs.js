@@ -1,0 +1,12 @@
+pref("automatic_add", false);
+pref("ignore_collections", "");
+pref("include_note", false);
+pref("note_format", "Abstract: \"${abstract}\"");
+pref("due_string", "Today");
+pref("priority", 4);
+pref("project", "Inbox");
+pref("section", "");
+pref("set_due", false);
+pref("labels", "from_zotero");
+pref("task_format", "Read \"?${url}:[${title}](${url})?!${url}:${title}!\"");
+pref("todoist_token", "");

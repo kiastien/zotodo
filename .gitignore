@@ -1,14 +1,16 @@
-wiki
-gen
-build
-*~
-*.swp
-*.debug
-*.cache
-*.status
-*.js.map
-*.tmp
-*.xpi
+# dot files
+.DS_Store
+
+# Node.js
 node_modules
+pnpm-lock.yaml
+yarn.lock
+
+# TSC
+tsconfig.tsbuildinfo
+
+# Scaffold
 .env
-**.DS_Store
+.scaffold
+build
+logs

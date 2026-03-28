@@ -1,47 +1,56 @@
 {
   "name": "zotodo",
-  "id": "zotodov8@zotero.org",
-  "minVersion": "7.0",
-  "maxVersion": "8.0.*",
+  "type": "module",
   "version": "0.10.1",
   "description": "Add papers imported to Zotero as Todoist tasks",
+  "config": {
+    "addonName": "Zotodo",
+    "addonID": "zotodov8@zotero.org",
+    "addonRef": "zotodo",
+    "addonInstance": "Zotodo",
+    "prefsPrefix": "extensions.zotodo"
+  },
   "scripts": {
-    "lint": "eslint . --ext .ts --cache --cache-location .eslintcache/",
-    "build": "node esbuild.js",
-    "postbuild": "zp-zipup build zotodo",
-    "release": "zp-release",
+    "start": "zotero-plugin serve",
+    "build": "zotero-plugin build",
+    "lint:check": "prettier --check . && eslint .",
+    "lint:fix": "prettier --write . && eslint . --fix",
+    "release": "zotero-plugin release",
+    "test": "zotero-plugin test",
     "postversion": "git push --follow-tags"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/kiastien/zotodo.git"
+    "url": "git+https://github.com/kiastien/zotodo.git"
   },
-  "author": {
-    "name": "Wil Thomason",
-    "email": "wil.thomason@gmail.com"
-  },
+  "author": "Wil Thomason",
   "bugs": {
     "url": "https://github.com/kiastien/zotodo/issues"
   },
-  "homepage": "https://github.com/kiastien/zotodo",
-  "dependencies": {
-    "@types/mocha": "^9.1.1",
-    "@typescript-eslint/eslint-plugin": "^5.31.0",
-    "@typescript-eslint/parser": "^5.31.0",
-    "esbuild": "^0.14.51",
-    "eslint": "^8.21.0",
-    "eslint-plugin-import": "^2.26.0",
-    "eslint-plugin-jsdoc": "^39.3.4",
-    "eslint-plugin-prefer-arrow": "^1.2.3",
-    "mkdirp": "^1.0.4",
-    "rimraf": "^3.0.2",
-    "ts-node": "^10.9.1",
-    "typescript": "^4.7.4",
-    "zotero-plugin": "^9.0.1"
+  "homepage": "https://github.com/kiastien/zotodo#readme",
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^24.10.0",
+    "@zotero-plugin/eslint-config": "^0.6.7",
+    "eslint": "^9.39.2",
+    "prettier": "^3.7.4",
+    "typescript": "^5.9.3",
+    "zotero-plugin-scaffold": "^0.8.2",
+    "zotero-types": "^4.1.0-beta.4"
   },
-  "xpi": {
-    "name": "Zotodo",
-    "updateLink": "https://github.com/kiastien/zotodo/releases/download/v{version}/zotodo-{version}.xpi",
-    "releaseURL": "https://github.com/kiastien/zotodo/releases/download/release/"
+  "prettier": {
+    "printWidth": 80,
+    "tabWidth": 2,
+    "endOfLine": "lf",
+    "overrides": [
+      {
+        "files": [
+          "*.xhtml"
+        ],
+        "options": {
+          "htmlWhitespaceSensitivity": "css"
+        }
+      }
+    ]
   }
 }
