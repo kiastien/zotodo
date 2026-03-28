@@ -187,9 +187,26 @@ function onShutdown(): void {
   debug("Addon shutdown complete; instance removed from Zotero namespace");
 }
 
+function onPrefsEvent(type: string, data: { window: Window }) {
+  if (type === "load" || type === "change") {
+    const doc = data.window.document;
+    const includeNote = Zotero.Prefs.get("extensions.zotodo.include_note", true) as boolean;
+    const setDue = Zotero.Prefs.get("extensions.zotodo.set_due", true) as boolean;
+    const noteFormat = doc.getElementById("id-zotodo-note-format") as any;
+    const noteFormatLabel = doc.getElementById("id-zotodo-note-format-label") as any;
+    const dueString = doc.getElementById("id-zotodo-due-string") as any;
+    const dueStringLabel = doc.getElementById("id-zotodo-due-string-label") as any;
+    if (noteFormat) noteFormat.disabled = !includeNote;
+    if (noteFormatLabel) noteFormatLabel.disabled = !includeNote;
+    if (dueString) dueString.disabled = !setDue;
+    if (dueStringLabel) dueStringLabel.disabled = !setDue;
+  }
+}
+
 export default {
   onStartup,
   onShutdown,
   onMainWindowLoad,
   onMainWindowUnload,
+  onPrefsEvent,
 };

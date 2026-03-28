@@ -92,15 +92,22 @@ interface ZoteroItem {
 
 interface TodoistApiItem {
   name: string
-  id: number
+  id: string | number
 }
+
+interface TodoistListResponse {
+  results: TodoistApiItem[]
+  next_cursor?: string | null
+}
+
+type TodoistID = string | number
 
 class TaskData {
   public contents: string
-  public note: string = null
-  public due_string: string = null
+  public note: string | null = null
+  public due_string: string | null = null
   public project_name: string
-  public section_name: string = null
+  public section_name: string | null = null
   public priority: number
   public label_names: string[]
   constructor(
@@ -117,10 +124,23 @@ class TaskData {
 }
 
 class TodoistAPI {
-  private token: string = null
-  private projects: Record<string, number> = null
-  private labels: Record<string, number> = null
-  private sections: Record<string, Record<string, number>> = {}
+  private token: string | null = null
+  private projects: Record<string, TodoistID> | null = null
+  private labels: Record<string, TodoistID> | null = null
+  private sections: Record<string, Record<string, TodoistID>> = {}
+
+  private responseText(response: any): string {
+    return String(response?.responseText ?? response?.text ?? '')
+  }
+
+  private responseOk(response: any): boolean {
+    if (typeof response?.ok === 'boolean') {
+      return response.ok
+    }
+
+    const status = Number(response?.status ?? 0)
+    return status >= 200 && status < 300
+  }
 
   constructor(token: string) {
     this.token = token
@@ -158,16 +178,16 @@ class TodoistAPI {
       Zotero.debug(`Zotodo: Resolved section '${task_data.section_name}' -> ${section_id}`)
     }
 
-    const label_ids = []
+    const label_names = []
     for (const label_name of task_data.label_names) {
-      const label_id = await this.getLabelId(label_name, progWin)
-      if (label_id == null) {
+      const resolvedLabelName = await this.getLabelId(label_name, progWin)
+      if (resolvedLabelName == null) {
         Zotero.debug(`Zotodo: Unable to resolve label '${label_name}'`)
         return
       }
 
-      label_ids.push(label_id)
-      Zotero.debug(`Zotodo: Resolved label '${label_name}' -> ${label_id}`)
+      label_names.push(label_name)
+      Zotero.debug(`Zotodo: Resolved label '${label_name}'`)
     }
 
     const createPayload: { [k: string]: any } = {
@@ -176,8 +196,8 @@ class TodoistAPI {
       priority: task_data.priority,
     }
 
-    if (label_ids.length > 0) {
-      createPayload.label_ids = label_ids
+    if (label_names.length > 0) {
+      createPayload.labels = label_names
     }
 
     if (section_id != null) {
@@ -195,15 +215,15 @@ class TodoistAPI {
 
     const createResponse = await Zotero.HTTP.request( // Use Zotero.HTTP for Z7
       'POST',
-      'https://api.todoist.com/rest/v2/tasks',
+      'https://api.todoist.com/api/v1/tasks',
       {
         headers: createHeaders,
         body: JSON.stringify(createPayload),
       }
     )
 
-    if (!createResponse.ok) {
-      const err = createResponse.text // Access response text directly
+    if (!this.responseOk(createResponse)) {
+      const err = this.responseText(createResponse)
       const msg = `Error creating task: ${createResponse.statusText} ${err}`
       showError(msg, progWin)
       Zotero.logError(msg)
@@ -212,7 +232,7 @@ class TodoistAPI {
     Zotero.debug(`Zotodo: Task created successfully for '${task_data.contents}'`)
 
     if (task_data.note != null) {
-      const task_id = (JSON.parse(createResponse.text as string)).id // Parse response text
+      const task_id = (JSON.parse(this.responseText(createResponse)) as { id: TodoistID }).id
       const notePayload = {
         content: task_data.note,
         task_id,
@@ -225,15 +245,15 @@ class TodoistAPI {
 
       const noteResponse = await Zotero.HTTP.request( // Use Zotero.HTTP for Z7
         'POST',
-        'https://api.todoist.com/rest/v2/comments',
+        'https://api.todoist.com/api/v1/comments',
         {
           headers: noteHeaders,
           body: JSON.stringify(notePayload),
         }
       )
 
-      if (!noteResponse.ok) {
-        const err = noteResponse.text
+      if (!this.responseOk(noteResponse)) {
+        const err = this.responseText(noteResponse)
         const msg = `Error adding comment: ${noteResponse.statusText} ${err}`
         showError(msg, progWin)
         Zotero.logError(msg)
@@ -249,7 +269,7 @@ class TodoistAPI {
     section_name: string,
     project_name: string,
     progress_win: object
-  ): Promise<number | null> {
+  ): Promise<TodoistID | null> {
     Zotero.debug(`Zotodo: getSectionId('${section_name}', project='${project_name}')`)
     if (this.sections[project_name] === undefined) {
       const project_sections = await this.getSections(
@@ -284,7 +304,7 @@ class TodoistAPI {
   private async getProjectId(
     project_name: string,
     progress_win: object
-  ): Promise<number | null> {
+  ): Promise<TodoistID | null> {
     Zotero.debug(`Zotodo: getProjectId('${project_name}')`)
     if (this.projects == null) {
       this.projects = await this.getProjects(progress_win)
@@ -296,14 +316,16 @@ class TodoistAPI {
     }
 
     if (!(project_name in this.projects)) {
-      const project_result = await this.createProject(
-        project_name,
-        progress_win
-      )
-      if (!project_result) {
-        return null
-      }
-      Zotero.debug(`Zotodo: Created missing project '${project_name}'`)
+      // const project_result = await this.createProject(
+      //   project_name,
+      //   progress_win
+      // )
+      // if (!project_result) {
+      //   return null
+      // }
+      // Zotero.debug(`Zotodo: Created missing project '${project_name}'`)
+      Zotero.debug(`Zotodo: Project '${project_name}' not found in cache and auto-creation is disabled.`)
+      return null
     }
 
     return this.projects[project_name]
@@ -312,7 +334,7 @@ class TodoistAPI {
   private async getLabelId(
     label_name: string,
     progress_win: object
-  ): Promise<number | null> {
+  ): Promise<string | null> {
     Zotero.debug(`Zotodo: getLabelId('${label_name}')`)
     if (this.labels == null) {
       this.labels = await this.getLabels(progress_win)
@@ -332,7 +354,7 @@ class TodoistAPI {
       Zotero.debug(`Zotodo: Created missing label '${label_name}'`)
     }
 
-    return this.labels[label_name]
+    return label_name
   }
 
   private async createSection(
@@ -354,22 +376,22 @@ class TodoistAPI {
     const payload = { name: section_name, project_id }
     const response = await Zotero.HTTP.request( // Use Zotero.HTTP for Z7
       'POST',
-      'https://api.todoist.com/rest/v2/sections',
+      'https://api.todoist.com/api/v1/sections',
       {
         headers,
         body: JSON.stringify(payload),
       }
     )
 
-    if (!response.ok) {
-      const err = response.text
+    if (!this.responseOk(response)) {
+      const err = this.responseText(response)
       const msg = `Error creating section ${section_name} in project ${project_name}: ${response.statusText} ${err}`
       showError(msg, progWin)
       Zotero.logError(msg)
       return false
     }
 
-    const data = JSON.parse(response.text as string)
+    const data = JSON.parse(this.responseText(response))
     if (!this.sections[project_name]) this.sections[project_name] = {}
     this.sections[project_name][data.name] = data.id
     Zotero.debug(`Zotodo: Section created '${data.name}' -> ${data.id}`)
@@ -377,41 +399,41 @@ class TodoistAPI {
     return true
   }
 
-  private async createProject(
-    project_name: string,
-    progWin: object
-  ): Promise<boolean> {
-    Zotero.debug(`Zotodo: Creating project '${project_name}'`)
-    const headers = {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${this.token}`,
-    }
+  // private async createProject(
+  //   project_name: string,
+  //   progWin: object
+  // ): Promise<boolean> {
+  //   Zotero.debug(`Zotodo: Creating project '${project_name}'`)
+  //   const headers = {
+  //     'Content-Type': 'application/json',
+  //     Authorization: `Bearer ${this.token}`,
+  //   }
 
-    const payload = { name: project_name }
-    const response = await Zotero.HTTP.request( // Use Zotero.HTTP for Z7
-      'POST',
-      'https://api.todoist.com/rest/v2/projects',
-      {
-        headers,
-        body: JSON.stringify(payload),
-      }
-    )
+  //   const payload = { name: project_name }
+  //   const response = await Zotero.HTTP.request( // Use Zotero.HTTP for Z7
+  //     'POST',
+  //     'https://api.todoist.com/api/v1/projects',
+  //     {
+  //       headers,
+  //       body: JSON.stringify(payload),
+  //     }
+  //   )
 
-    if (!response.ok) {
-      const err = response.text
-      const msg = `Error creating project ${project_name}: ${response.statusText} ${err}`
-      showError(msg, progWin)
-      Zotero.logError(msg)
-      return false
-    }
+  //   if (!response.ok) {
+  //     const err = response.text
+  //     const msg = `Error creating project ${project_name}: ${response.statusText} ${err}`
+  //     showError(msg, progWin)
+  //     Zotero.logError(msg)
+  //     return false
+  //   }
 
-    const data = JSON.parse(response.text as string)
-    if (!this.projects) this.projects = {}
-    this.projects[data.name] = data.id
-    Zotero.debug(`Zotodo: Project created '${data.name}' -> ${data.id}`)
+  //   const data = JSON.parse(response.text as string)
+  //   if (!this.projects) this.projects = {}
+  //   this.projects[data.name] = data.id
+  //   Zotero.debug(`Zotodo: Project created '${data.name}' -> ${data.id}`)
 
-    return true
-  }
+  //   return true
+  // }
 
   private async createLabel(
     label_name: string,
@@ -426,22 +448,22 @@ class TodoistAPI {
     const payload = { name: label_name }
     const response = await Zotero.HTTP.request( // Use Zotero.HTTP for Z7
       'POST',
-      'https://api.todoist.com/rest/v2/labels',
+      'https://api.todoist.com/api/v1/labels',
       {
         headers,
         body: JSON.stringify(payload),
       }
     )
 
-    if (!response.ok) {
-      const err = response.text
+    if (!this.responseOk(response)) {
+      const err = this.responseText(response)
       const msg = `Error creating label ${label_name}: ${response.statusText} ${err}`
       showError(msg, progWin)
       Zotero.logError(msg)
       return false
     }
 
-    const data = JSON.parse(response.text as string)
+    const data = JSON.parse(this.responseText(response))
     if (!this.labels) this.labels = {}
     this.labels[data.name] = data.id
     Zotero.debug(`Zotodo: Label created '${data.name}' -> ${data.id}`)
@@ -452,12 +474,12 @@ class TodoistAPI {
   private async getAll(
     endpoint: string,
     progWin: object
-  ): Promise<Record<string, number> | null> {
+  ): Promise<Record<string, TodoistID> | null> {
     Zotero.debug(`Zotodo: Fetching Todoist endpoint '${endpoint}'`)
     const headers = {
-      'Content-Type': 'application/json',
       Authorization: `Bearer ${this.token}`,
     }
+    // 'Content-Type': 'application/json',
 
     const response = await Zotero.HTTP.request( // Use Zotero.HTTP for Z7
       'GET',
@@ -467,16 +489,21 @@ class TodoistAPI {
       }
     )
 
-    if (!response.ok) {
-      const err = response.text
+    const responseBody = this.responseText(response)
+    Zotero.debug(`Zotodo: Request headers:`, headers)
+    Zotero.debug(`Zotodo: Received response from '${endpoint}' (status=${String(response?.status ?? '')}, statusText='${String(response?.statusText ?? '')}', bodyLength=${responseBody.length})`)
+
+    if (!this.responseOk(response)) {
+      const err = responseBody
       const msg = `Error requesting from ${endpoint}: ${response.statusText} ${err}`
       showError(msg, progWin)
       Zotero.logError(msg)
       return null
     }
 
-    const data = JSON.parse(response.text as string) as TodoistApiItem[]
-    const items: { [k: string]: number } = {}
+    const parsed = JSON.parse(responseBody) as TodoistApiItem[] | TodoistListResponse
+    const data = Array.isArray(parsed) ? parsed : parsed.results
+    const items: { [k: string]: TodoistID } = {}
     for (const item of data) {
       items[item.name] = item.id
     }
@@ -489,7 +516,7 @@ class TodoistAPI {
   private async getSections(
     project_name: string,
     progWin: object
-  ): Promise<Record<string, number> | null> {
+  ): Promise<Record<string, TodoistID> | null> {
     const project_id = await this.getProjectId(project_name, progWin)
     if (project_id == null) {
       return null
@@ -497,23 +524,22 @@ class TodoistAPI {
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return await this.getAll(
-      `https://api.todoist.com/rest/v2/sections?project_id=${project_id}`,
+      `https://api.todoist.com/api/v1/sections?project_id=${project_id}`,
       progWin
     )
   }
 
-  private async getProjects(progWin: object): Promise<Record<string, number> | null> {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    return await this.getAll('https://api.todoist.com/rest/v2/projects', progWin)
+  private async getProjects(progWin: object): Promise<Record<string, TodoistID> | null> {
+    return this.getAll('https://api.todoist.com/api/v1/projects', progWin)
   }
 
-  private async getLabels(progWin: object): Promise<Record<string, number>> {
-    return this.getAll('https://api.todoist.com/rest/v2/labels', progWin)
+  private async getLabels(progWin: object): Promise<Record<string, TodoistID> | null> {
+    return this.getAll('https://api.todoist.com/api/v1/labels', progWin)
   }
 }
 
 export class Zotodo {
-  private todoist: TodoistAPI
+  private todoist!: TodoistAPI
   public notifierID: any = null // Stored notifier ID
 
   // Called from startup

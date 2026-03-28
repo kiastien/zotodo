@@ -1,110 +1,77 @@
-<?xml version="1.0"?>
+<linkset>
+  <html:link rel="localization" href="__addonRef__-preferences.ftl" />
+</linkset>
+<groupbox onload="Zotero.__addonInstance__.hooks.onPrefsEvent('load', { window })">
+  <caption data-l10n-id="zotodo-todoist-settings" />
 
-<vbox id="zotodo-pref" data-l10n-id="zotodo-preferences-window" xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul" xmlns:html="http://www.w3.org/1999/xhtml" onload="Zotero?.Zotodo?.Options?.updatePreferenceWindow('init-all');">
-  <linkset>
-    <html:link rel="localization" href="zotodo-preferences.ftl"/>
-  </linkset>
-    <preferences>
-      <preference id="pref-zotodo-automatic-add" name="extensions.zotodo.automatic_add" type="bool"/>
-      <preference id="pref-zotodo-ignore-collections" name="extensions.zotodo.ignore_collections" type="string"/>
-      <preference id="pref-zotodo-include-note" name="extensions.zotodo.include_note" type="bool"/>
-      <preference id="pref-zotodo-note-format" name="extensions.zotodo.note_format" type="string"/>
-      <preference id="pref-zotodo-due-string" name="extensions.zotodo.due_string" type="string"/>
-      <preference id="pref-zotodo-priority" name="extensions.zotodo.priority" type="int"/>
-      <preference id="pref-zotodo-project" name="extensions.zotodo.project" type="string"/>
-      <preference id="pref-zotodo-section" name="extensions.zotodo.section" type="string"/>
-      <preference id="pref-zotodo-set-due" name="extensions.zotodo.set_due" type="bool"/>
-      <preference id="pref-zotodo-labels" name="extensions.zotodo.labels" type="string"/>
-      <preference id="pref-zotodo-task-format" name="extensions.zotodo.task_format" type="string"/>
-      <preference id="pref-zotodo-todoist-token" name="extensions.zotodo.todoist_token" type="string"/>
-    </preferences>
+  <hbox>
+    <label id="id-zotodo-todoist-token-label" control="id-zotodo-todoist-token" data-l10n-id="zotodo-todoist-token" />
+    <html:input id="id-zotodo-todoist-token" preference="todoist_token" type="password"></html:input>
+  </hbox>
 
-    <groupbox>
-      <caption label="Todoist-related settings" data-l10n-id="zotodo-todoist-settings"/>
-      <separator/>
+  <hbox>
+    <label id="id-zotodo-project-label" control="id-zotodo-project" data-l10n-id="zotodo-project" />
+    <html:input id="id-zotodo-project" preference="project" type="text"></html:input>
+  </hbox>
 
-      <label id="id-zotodo-todoist-token-label" value="Todoist API token" data-l10n-id="zotodo-todoist-token" control="id-zotodo-todoist-token"/>
-      <textbox id="id-zotodo-todoist-token" preference="pref-zotodo-todoist-token" flex="1"/>
-      <separator/>
+  <hbox>
+    <label id="id-zotodo-section-label" control="id-zotodo-section" data-l10n-id="zotodo-section" />
+    <html:input id="id-zotodo-section" preference="section" type="text"></html:input>
+  </hbox>
 
-      <label id="id-zotodo-project-label" value="Project for new tasks" data-l10n-id="zotodo-project" control="id-zotodo-project"/>
-      <textbox id="id-zotodo-project" preference="pref-zotodo-project" flex="1"/>
-      <separator/>
+  <checkbox
+    id="id-zotodo-set-due"
+    preference="set_due"
+    data-l10n-id="zotodo-set-due"
+    oncommand="Zotero.__addonInstance__.hooks.onPrefsEvent('change', { window })"
+  />
 
-      <label id="id-zotodo-section-label" value="Section for new tasks (leave empty for none)" data-l10n-id="zotodo-section" control="id-zotodo-section"/>
-      <textbox id="id-zotodo-section" preference="pref-zotodo-section" flex="1"/>
-      <separator/>
+  <hbox>
+    <label id="id-zotodo-due-string-label" control="id-zotodo-due-string" data-l10n-id="zotodo-due-string" />
+    <html:input id="id-zotodo-due-string" preference="due_string" type="text"></html:input>
+  </hbox>
 
-      <checkbox id="id-zotodo-set-due" preference="pref-zotodo-set-due" label="Should Zotodo set a due date?" data-l10n-id="zotodo-set-due" oncommand="Zotero.Zotodo.Options.updatePreferenceWindow('set-due')"/>
-      <separator/>
+  <hbox>
+    <label id="id-zotodo-labels-label" control="id-zotodo-labels" data-l10n-id="zotodo-labels" />
+    <html:input id="id-zotodo-labels" preference="labels" type="text"></html:input>
+  </hbox>
 
-      <label id="id-zotodo-due-string-label" value="Natural language (English) string for due date" data-l10n-id="zotodo-due-string" control="id-zotodo-due-string"/>
-      <textbox id="id-zotodo-due-string" preference="pref-zotodo-due-string" flex="1"/>
-      <separator/>
+  <hbox>
+    <label id="id-zotodo-priority-label" control="id-zotodo-priority" data-l10n-id="zotodo-priority" />
+    <html:input id="id-zotodo-priority" preference="priority" type="number" min="1" max="4" step="1"></html:input>
+  </hbox>
+</groupbox>
 
-      <label id="id-zotodo-labels-label" value="Comma-separated list of Todoist labels to apply to new tasks" data-l10n-id="zotodo-labels" control="id-zotodo-labels"/>
-      <textbox id="id-zotodo-labels" preference="pref-zotodo-labels" flex="1"/>
-      <separator/>
+<groupbox>
+  <caption data-l10n-id="zotodo-zotero-settings" />
 
-      <label id="id-zotodo-priority-label" value="Priority for new tasks" data-l10n-id="zotodo-priority" control="id-zotodo-priority"/>
-      <textbox id="id-zotodo-priority" min="1" max="4" type="number" preference="pref-zotodo-priority" flex="1"/>
-      <separator/>
-    </groupbox>
-    <separator/>
-    <groupbox>
-      <caption label="Zotero-related settings" data-l10n-id="zotodo-zotero-settings"/>
-      <separator/>
+  <hbox>
+    <label id="id-zotodo-task-format-label" control="id-zotodo-task-format" data-l10n-id="zotodo-task-format" />
+    <html:input id="id-zotodo-task-format" preference="task_format" type="text"></html:input>
+  </hbox>
+  <label id="id-zotodo-task-format-wildcards" style="font-size: 10px" data-l10n-id="zotodo-list-of-wildcards" />
 
-      <label id="id-zotodo-task-format-label" value="Template string for new tasks" data-l10n-id="zotodo-task-format" control="id-zotodo-task-format"/>
-      <textbox id="id-zotodo-task-format" preference="pref-zotodo-task-format" flex="1"/>
-      <label id="id-zotodo-task-format-wildcards" style="font-size: 10px" value="Tokens: title, authors, abstract, url, doi, pdf_path, pdf_id, item_id, select_uri, open_uri, library_path, citekey, et_al. Conditional syntax: ?token:text? and !token:text!" data-l10n-id="zotodo-list-of-wildcards"/>
-      <separator/>
+  <checkbox
+    id="id-zotodo-include-note"
+    preference="include_note"
+    data-l10n-id="zotodo-include-note"
+    oncommand="Zotero.__addonInstance__.hooks.onPrefsEvent('change', { window })"
+  />
 
-      <checkbox id="id-zotodo-include-note" preference="pref-zotodo-include-note" label="Should Zotodo add a comment to new tasks?" data-l10n-id="zotodo-include-note" oncommand="Zotero.Zotodo.Options.updatePreferenceWindow('include-note')"/>
-      <separator/>
-      <label id="id-zotodo-note-format" value="Template string for comments" data-l10n-id="zotodo-note-format" control="id-zotodo-note-format"/>
-      <textbox id="id-zotodo-note-format" preference="pref-zotodo-note-format" flex="1"/>
-      <label id="id-zotodo-note-format-wildcards" style="font-size: 10px" value="Tokens: title, authors, abstract, url, doi, pdf_path, pdf_id, item_id, select_uri, open_uri, library_path, citekey, et_al. Conditional syntax: ?token:text? and !token:text!" data-l10n-id="zotodo-list-of-wildcards"/>
-      <separator/>
+  <hbox>
+    <label id="id-zotodo-note-format-label" control="id-zotodo-note-format" data-l10n-id="zotodo-note-format" />
+    <html:input id="id-zotodo-note-format" preference="note_format" type="text"></html:input>
+  </hbox>
+  <label id="id-zotodo-note-format-wildcards" style="font-size: 10px" data-l10n-id="zotodo-list-of-wildcards" />
 
+  <checkbox
+    id="id-zotodo-automatic-add"
+    preference="automatic_add"
+    data-l10n-id="zotodo-automatic-add"
+  />
 
-      <checkbox id="id-zotodo-automatic-add" preference="pref-zotodo-automatic-add" label="Should Zotodo add tasks for every newly added item?" data-l10n-id="zotodo-automatic-add"/>
-      <separator/>
-
-      <label id="id-zotodo-ignore-collections-label" value="Comma-separated list of collection names for which Zotodo should not create tasks" data-l10n-id="zotodo-ignore-collections" control="id-zotodo-ignore-collections"/>
-      <textbox id="id-zotodo-ignore-collections" preference="pref-zotodo-ignore-collections" flex="1"/>
-    </groupbox>
-
-  <html:script>
-  //<![CDATA[
-  (function () {
-    class Options {
-      updatePreferenceWindow(which) {
-        Zotero.debug("Zotodo: updatePreferenceWindow called with '" + which + "'");
-        switch (which) {
-          case "init-all":
-            this.disablePref("include_note", "note-format", false);
-            this.disablePref("set_due", "due-string", false);
-            break;
-          case "include_note":
-            this.disablePref("include_note", "note-format", true);
-            break;
-          case "set_due":
-            this.disablePref("set_due", "due-string", true);
-            break;
-          default:
-            Zotero.logError("Unexpected preference value: " + which);
-        }
-      }
-      disablePref(setting_name, to_disable, revert) {
-        let val = document.getElementById(setting_name).value;
-        if (revert) val = !val;
-        Zotero.debug("Zotodo: disablePref setting='" + setting_name + "', target='" + to_disable + "', enabled=" + val);
-        document.getElementById("id-zotodo-" + to_disable).disabled = !val;
-      }
-    }
-    if (!Zotero.Zotodo.Options) Zotero.Zotodo.Options = new Options();
-  })();
-  //]]>
-  </html:script>
-</vbox>
+  <hbox>
+    <label id="id-zotodo-ignore-collections-label" control="id-zotodo-ignore-collections" data-l10n-id="zotodo-ignore-collections" />
+    <html:input id="id-zotodo-ignore-collections" preference="ignore_collections" type="text"></html:input>
+  </hbox>
+</groupbox>
