@@ -5,6 +5,8 @@ const { classes: Cc, interfaces: Ci } = Components;
 
 const monkey_patch_marker = 'ZotodoMonkeyPatched'
 const MAX_PRIORITY = 5
+const ADDON_ID = 'zotodov8@zotero.org'
+const WINDOW_OBSERVER_NAME = 'Zotodo-window-observer'
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-inner-declarations, prefer-arrow/prefer-arrow-functions
 function patch(object: any, method: string, patcher: (original: any) => any) {
@@ -597,7 +599,7 @@ class Zotodo {
     const doi: string = item.getField('DOI', false, true) || ''
     let pdf_path = ''
     let pdf_id = '' // Changed to string for consistency with Z7 URIs
-    const attachments: any[] = item.getAttachments(false).map(id => Zotero.Items.get(id)) // Get full attachment items
+    const attachments: any[] = item.getAttachments().map(id => Zotero.Items.get(id)) // Get full attachment items
     if (attachments.length > 0) {
       for (const attachment of attachments) {
         if (attachment.attachmentContentType === 'application/pdf') {
@@ -718,7 +720,78 @@ class Zotodo {
 let rootURI: string | null = null
 let chromeHandle: any = null // Stores the chrome registration handle
 let zotodoInstance: Zotodo | null = null
+let windowObserverID: any = null
+let useMenuManager = false
+const registeredMenuIDs: any[] = []
 const services: { aomStartup?: any, Services?: any } = {} // To store Cc and Services if needed
+
+function registerMenus(): boolean {
+  if (!Zotero.MenuManager || typeof Zotero.MenuManager.registerMenu !== 'function') {
+    return false
+  }
+
+  try {
+    const createTaskMenuID = Zotero.MenuManager.registerMenu({
+      menuID: 'zotodo-create-task',
+      pluginID: ADDON_ID,
+      target: 'main/library/item',
+      menus: [
+        {
+          menuType: 'menuitem',
+          label: 'Create Todoist task',
+          onCommand: () => {
+            if (zotodoInstance && typeof zotodoInstance.makeTaskForSelectedItems === 'function') {
+              zotodoInstance.makeTaskForSelectedItems()
+            }
+          },
+        },
+      ],
+    })
+
+    const preferencesMenuID = Zotero.MenuManager.registerMenu({
+      menuID: 'zotodo-preferences',
+      pluginID: ADDON_ID,
+      target: 'main/menubar/tools',
+      menus: [
+        {
+          menuType: 'menuitem',
+          label: 'Zotodo Preferences',
+          onCommand: () => {
+            if (zotodoInstance && typeof zotodoInstance.openPreferenceWindow === 'function') {
+              zotodoInstance.openPreferenceWindow()
+            }
+          },
+        },
+      ],
+    })
+
+    registeredMenuIDs.push(createTaskMenuID, preferencesMenuID)
+    Zotero.debug('Zotodo: registered menus via Zotero.MenuManager')
+    return true
+  }
+  catch (err) {
+    Zotero.logError(`Zotodo: failed to register menus with MenuManager: ${String(err)}`)
+    unregisterMenus()
+    return false
+  }
+}
+
+function unregisterMenus(): void {
+  if (!Zotero.MenuManager || typeof Zotero.MenuManager.unregisterMenu !== 'function') {
+    registeredMenuIDs.length = 0
+    return
+  }
+
+  while (registeredMenuIDs.length > 0) {
+    const menuID = registeredMenuIDs.pop()
+    try {
+      Zotero.MenuManager.unregisterMenu(menuID)
+    }
+    catch (err) {
+      Zotero.logError(`Zotodo: failed to unregister menu ${String(menuID)}: ${String(err)}`)
+    }
+  }
+}
 
 const mainWindowObserver = {
   notify: (event: string, type: string, ids: string[], extraData: any) => { // ids are strings in Z7 for windows
@@ -778,19 +851,30 @@ export function startup({ version, rootURI: rtURI }: { version: string, rootURI:
   zotodoInstance.init(); // Call the refactored init
   (Zotero ).Zotodo = zotodoInstance // Make instance globally available
 
-  // Add main window listeners
-  Zotero.getMainWindows().forEach(win => onMainWindowLoad({ window: win }))
-  Zotero.Notifier.registerObserver(mainWindowObserver, ['window'], 'Zotodo-window-observer', true) // Added unique name and ignoreCache = true
+  useMenuManager = registerMenus()
+
+  if (!useMenuManager) {
+    Zotero.getMainWindows().forEach(win => onMainWindowLoad({ window: win }))
+    windowObserverID = Zotero.Notifier.registerObserver(mainWindowObserver, ['window'], WINDOW_OBSERVER_NAME, true)
+  }
+
   Zotero.debug('Zotodo: startup complete.')
 }
 
 export function shutdown(reason: unknown): void {
   Zotero.debug(`Zotodo: shutdown, reason: ${String(reason)}`)
 
-  Zotero.Notifier.unregisterObserver('Zotodo-window-observer') // Use the unique name
+  if (windowObserverID) {
+    Zotero.Notifier.unregisterObserver(windowObserverID)
+    windowObserverID = null
+  }
 
-  // Call onMainWindowUnload for all open main windows
-  Zotero.getMainWindows().forEach(win => onMainWindowUnload({ window: win }))
+  if (!useMenuManager) {
+    Zotero.getMainWindows().forEach(win => onMainWindowUnload({ window: win }))
+  }
+
+  unregisterMenus()
+  useMenuManager = false
 
   if (zotodoInstance && zotodoInstance.notifierID) {
     Zotero.Notifier.unregisterObserver(zotodoInstance.notifierID)

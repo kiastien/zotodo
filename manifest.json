@@ -6,10 +6,10 @@
   "author": "Wil Thomason",
   "applications": {
     "zotero": {
-      "id": "zotodo@wbthomason.github.com",
-      "strict_min_version": "6.999",
-      "strict_max_version": "7.0.*",
-      "update_url": "https://github.com/wbthomason/zotodo/releases/download/v0.10.1/zotodo-0.10.1.xpi"
+      "id": "zotodov8@zotero.org",
+      "update_url": "https://github.com/kiastien/zotodo/releases/download/release/updates.json",
+      "strict_min_version": "7.0",
+      "strict_max_version": "8.0.*"
     }
   }
 }

@@ -4,8 +4,8 @@ const fs = require('fs')
 const esbuild = require('esbuild')
 
 require('zotero-plugin/copy-assets')
-require('zotero-plugin/rdf')
-require('zotero-plugin/version')
+require('zotero-plugin/make-manifest')
+require('zotero-plugin/make-version')
 
 async function build() {
   // rmrf.sync('gen')
