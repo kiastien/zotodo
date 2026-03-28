@@ -20,7 +20,7 @@
     "content/**/*",
     "resource/**/*",
     "*.ts"
-  ],
+, "bootstrap.js"  ],
   "exclude": [
     "node_modules",
     "**/*.spec.ts",

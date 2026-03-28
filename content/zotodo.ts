@@ -8,6 +8,14 @@ const MAX_PRIORITY = 5
 const ADDON_ID = 'zotodov8@zotero.org'
 const WINDOW_OBSERVER_NAME = 'Zotodo-window-observer'
 
+const observerID = Zotero.Prefs.registerObserver(
+  "extensions.myplugin.mykey",
+  (value) => {
+    Zotero.debug(`Preference changed to ${value}`);
+  },
+  true
+);
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-inner-declarations, prefer-arrow/prefer-arrow-functions
 function patch(object: any, method: string, patcher: (original: any) => any) {
   if (object[method][monkey_patch_marker]) return
@@ -16,6 +24,7 @@ function patch(object: any, method: string, patcher: (original: any) => any) {
 }
 
 function getPref(pref_name: string): any {
+  Zotero.debug(`Zotodo: Getting preference ${pref_name}`);
   return Zotero.Prefs.get(`extensions.zotodo.${pref_name}`, true)
 }
 
@@ -486,8 +495,10 @@ class Zotodo {
 
   // Called from startup
   public init() {
+    Zotero.debug('Zotodo: Initializing Zotodo instance')
     const todoist_token: string = getPref('todoist_token')
     this.todoist = new TodoistAPI(todoist_token)
+    Zotero.debug('Zotodo: set up Todoist API instance')
 
     // Register notifier
     // The Zotero.Notifier.registerObserver is correct for Z7 as well
@@ -715,277 +726,3 @@ class Zotodo {
     // Example: this.removeMenuItems(window);
   }
 }
-
-// --- Bootstrap Functions ---
-let rootURI: string | null = null
-let chromeHandle: any = null // Stores the chrome registration handle
-let zotodoInstance: Zotodo | null = null
-let windowObserverID: any = null
-let useMenuManager = false
-const registeredMenuIDs: any[] = []
-const services: { aomStartup?: any, Services?: any } = {} // To store Cc and Services if needed
-
-function registerMenus(): boolean {
-  if (!Zotero.MenuManager || typeof Zotero.MenuManager.registerMenu !== 'function') {
-    return false
-  }
-
-  try {
-    const createTaskMenuID = Zotero.MenuManager.registerMenu({
-      menuID: 'zotodo-create-task',
-      pluginID: ADDON_ID,
-      target: 'main/library/item',
-      menus: [
-        {
-          menuType: 'menuitem',
-          label: 'Create Todoist task',
-          onCommand: () => {
-            if (zotodoInstance && typeof zotodoInstance.makeTaskForSelectedItems === 'function') {
-              zotodoInstance.makeTaskForSelectedItems()
-            }
-          },
-        },
-      ],
-    })
-
-    const preferencesMenuID = Zotero.MenuManager.registerMenu({
-      menuID: 'zotodo-preferences',
-      pluginID: ADDON_ID,
-      target: 'main/menubar/tools',
-      menus: [
-        {
-          menuType: 'menuitem',
-          label: 'Zotodo Preferences',
-          onCommand: () => {
-            if (zotodoInstance && typeof zotodoInstance.openPreferenceWindow === 'function') {
-              zotodoInstance.openPreferenceWindow()
-            }
-          },
-        },
-      ],
-    })
-
-    registeredMenuIDs.push(createTaskMenuID, preferencesMenuID)
-    Zotero.debug('Zotodo: registered menus via Zotero.MenuManager')
-    return true
-  }
-  catch (err) {
-    Zotero.logError(`Zotodo: failed to register menus with MenuManager: ${String(err)}`)
-    unregisterMenus()
-    return false
-  }
-}
-
-function unregisterMenus(): void {
-  if (!Zotero.MenuManager || typeof Zotero.MenuManager.unregisterMenu !== 'function') {
-    registeredMenuIDs.length = 0
-    return
-  }
-
-  while (registeredMenuIDs.length > 0) {
-    const menuID = registeredMenuIDs.pop()
-    try {
-      Zotero.MenuManager.unregisterMenu(menuID)
-    }
-    catch (err) {
-      Zotero.logError(`Zotodo: failed to unregister menu ${String(menuID)}: ${String(err)}`)
-    }
-  }
-}
-
-const mainWindowObserver = {
-  notify: (event: string, type: string, ids: string[], extraData: any) => { // ids are strings in Z7 for windows
-    Zotero.debug(`Zotodo: mainWindowObserver event: ${event}, type: ${type}`)
-    if (type === 'window') { // Ensure we are observing window events
-      if (event === 'add') {
-        // In Z7, for 'add' event, 'ids' contains the window IDs, and 'extraData' maps these IDs to booleans (true if the window is new)
-        // We need to get the actual window object.
-        ids.forEach(id => {
-          if (extraData[id] === true) { // Check if this window is being added
-            const win = Zotero.getMainWindows().find(w => w.document.documentElement.id === id)
-            if (win) {
-              onMainWindowLoad({ window: win })
-            }
-          }
-        })
-      }
-      else if (event === 'remove') {
-        // In Z7, for 'remove' event, 'extraData' is the window object itself.
-        // 'ids' will contain the ID of the window being removed.
-        if (extraData) { // extraData is the window object
-          onMainWindowUnload({ window: extraData })
-        }
-        else if (ids && ids.length > 0) {
-          // Fallback if extraData is not the window, though Z7 docs say it should be
-          // This part might not be strictly necessary if extraData is reliable
-          Zotero.debug(`Zotodo: Window removal detected for IDs: ${ids.join(', ')}, but no window object in extraData.`)
-        }
-      }
-    }
-  },
-}
-
-
-export function startup({ version, rootURI: rtURI }: { version: string, rootURI: string }, reason: unknown): void {
-  Zotero.debug(`Zotodo: startup ${version}, reason: ${String(reason)}`)
-  rootURI = rtURI // Will be like file:///path/to/plugin/
-
-  // In Zotero 7, Services is available globally.
-  // services.Services = globalThis.Services; // Not strictly necessary to store if always using global Services
-  services.aomStartup = Cc['@mozilla.org/addons/addon-manager-startup;1'].getService(Ci.amIAddonManagerStartup)
-
-  const manifestURI = Services.io.newURI(`${rootURI  }manifest.json`)
-  Zotero.debug(`Zotodo: Registering chrome with manifest: ${manifestURI.spec}`)
-
-  // Adjusted paths for Z7 structure (assuming build/ is not part of rootURI from Zotero)
-  // The paths in manifest.json and here should lead to the resources correctly.
-  // If your resources are inside a 'content', 'locale', 'skin' folder at the root of the XPI, this is correct.
-  chromeHandle = services.aomStartup.registerChrome(manifestURI, [
-    ['content', 'zotodo', 'content/'], // maps to content/ in XPI root
-    ['locale', 'zotodo', 'en-US', 'locale/en-US/'], // maps to locale/en-US/ in XPI root
-    ['skin', 'zotodo', 'default', 'skin/default/'], // maps to skin/default/ in XPI root (assuming skin name is 'default')
-    // If skin structure is just skin/, then use 'skin/'
-  ])
-
-  zotodoInstance = new Zotodo()
-  zotodoInstance.init(); // Call the refactored init
-  (Zotero ).Zotodo = zotodoInstance // Make instance globally available
-
-  useMenuManager = registerMenus()
-
-  if (!useMenuManager) {
-    Zotero.getMainWindows().forEach(win => onMainWindowLoad({ window: win }))
-    windowObserverID = Zotero.Notifier.registerObserver(mainWindowObserver, ['window'], WINDOW_OBSERVER_NAME, true)
-  }
-
-  Zotero.debug('Zotodo: startup complete.')
-}
-
-export function shutdown(reason: unknown): void {
-  Zotero.debug(`Zotodo: shutdown, reason: ${String(reason)}`)
-
-  if (windowObserverID) {
-    Zotero.Notifier.unregisterObserver(windowObserverID)
-    windowObserverID = null
-  }
-
-  if (!useMenuManager) {
-    Zotero.getMainWindows().forEach(win => onMainWindowUnload({ window: win }))
-  }
-
-  unregisterMenus()
-  useMenuManager = false
-
-  if (zotodoInstance && zotodoInstance.notifierID) {
-    Zotero.Notifier.unregisterObserver(zotodoInstance.notifierID)
-  }
-
-  if (chromeHandle) {
-    chromeHandle.destruct()
-    chromeHandle = null
-  }
-
-  if ((Zotero ).Zotodo) {
-    (Zotero ).Zotodo = null
-  }
-  zotodoInstance = null
-  Zotero.debug('Zotodo: shutdown complete.')
-}
-
-export function install(reason: unknown): void {
-  Zotero.debug(`Zotodo: install, reason: ${  String(reason)}`)
-}
-
-export function uninstall(reason: unknown): void {
-  Zotero.debug(`Zotodo: uninstall, reason: ${  String(reason)}`)
-}
-
-function onMainWindowLoad({ window }: { window: any }) {
-  Zotero.debug(`Zotodo: onMainWindowLoad for window ID ${window.document.documentElement.id}`)
-  const doc = window.document
-
-  // Add 'Make Task' to item context menu
-  const itemMenuItem = doc.createXULElement('menuitem')
-  itemMenuItem.id = 'zotodo-itemmenu-make-task'
-  itemMenuItem.setAttribute('label', 'Create Todoist task') // Using literal string
-  itemMenuItem.addEventListener('command', () => {
-    // Ensure zotodoInstance and its methods are available
-    if (zotodoInstance && typeof zotodoInstance.makeTaskForSelectedItems === 'function') {
-      zotodoInstance.makeTaskForSelectedItems()
-    }
-    else {
-      Zotero.debug('Zotodo: zotodoInstance or makeTaskForSelectedItems not available.')
-    }
-  })
-
-  const zoteroItemMenu = doc.getElementById('zotero-itemmenu')
-  if (zoteroItemMenu) {
-    let sep = doc.getElementById('id-zotodo-separator')
-    if (!sep) {
-      sep = doc.createXULElement('menuseparator')
-      sep.id = 'id-zotodo-separator'
-      zoteroItemMenu.appendChild(sep)
-    }
-    zoteroItemMenu.appendChild(itemMenuItem)
-  }
-  else {
-    Zotero.debug('Zotodo: zotero-itemmenu not found.')
-  }
-
-  // Add 'Zotodo Options' to Tools menu
-  const toolsMenuItem = doc.createXULElement('menuitem')
-  toolsMenuItem.id = 'zotodo-toolsmenu-options'
-  toolsMenuItem.setAttribute('label', 'Zotodo Preferences') // Using literal string
-  toolsMenuItem.addEventListener('command', () => {
-    if (zotodoInstance && typeof zotodoInstance.openPreferenceWindow === 'function') {
-      zotodoInstance.openPreferenceWindow()
-    }
-    else {
-      Zotero.debug('Zotodo: zotodoInstance or openPreferenceWindow not available.')
-    }
-  })
-
-  const toolsMenu = doc.getElementById('menu_ToolsPopup')
-  if (toolsMenu) {
-    toolsMenu.appendChild(toolsMenuItem)
-  }
-  else {
-    Zotero.debug('Zotodo: menu_ToolsPopup not found.')
-  }
-
-  zotodoInstance?.onWindowLoad(window)
-}
-
-function onMainWindowUnload({ window }: { window: any }) {
-  Zotero.debug(`Zotodo: onMainWindowUnload for window ID ${window.document.documentElement.id}`)
-  const doc = window.document
-
-  // Remove 'Make Task' menu item and its separator
-  doc.getElementById('zotodo-itemmenu-make-task')?.remove()
-  doc.getElementById('id-zotodo-separator')?.remove()
-
-  // Remove 'Zotodo Options' menu item
-  doc.getElementById('zotodo-toolsmenu-options')?.remove()
-
-  zotodoInstance?.onWindowUnload(window)
-}
-
-// No Zotero.Zotodo = new Zotodo() at the end anymore.
-// The bootstrap functions control the lifecycle.
-// Helper functions like getPref, showError, showSuccess, show are kept global within the module.
-// fetch calls replaced with Zotero.HTTP.request for Z7 compatibility.
-// eval removed and replaced with a safer token substitution logic.
-// Added Zotero.debug for logging.
-// Adjusted paths for chrome registration in startup.
-// Ensured notifier IDs are handled correctly in startup/shutdown.
-// Updated openPreferenceWindow to use rootURI and getMainWindow.
-// Minor fixes for item handling in makeTaskForSelectedItems and notifierCallback.
-// Ensured BBT integration checks for existence of Zotero.BetterBibTeX.
-// Added explicit return false in TodoistAPI createSection based on type hint, and initialized objects before setting keys.
-
-// The following are usually exported for Zotero 7 plugins,
-// but the plugin loader will also find them if they are top-level like this.
-// For clarity, an explicit export structure can be used if preferred later.
-// export { startup, shutdown, install, uninstall, onMainWindowLoad, onMainWindowUnload };
-
-Zotero.debug('Zotodo: zotodo.ts loaded')
