@@ -563,19 +563,26 @@ export class Zotodo {
 
   public openPreferenceWindow(paneID?: any, action?: any) {
     Zotero.debug(`Zotodo: openPreferenceWindow called (pane=${String(paneID)}, action=${String(action)})`)
-    const win = Zotero.getMainWindow() // Get main window reference
-    if (!win) {
-      Zotero.logError('Zotodo: Could not get main window to open preferences')
-      return
+    const registeredPaneID = addon.data.preferencesPaneID
+    if (registeredPaneID && Zotero.Utilities?.Internal?.openPreferences) {
+      Zotero.Utilities.Internal.openPreferences(registeredPaneID)
+      Zotero.debug(`Zotodo: opened integrated preferences pane '${registeredPaneID}'`)
+    } else {
+      // Fallback for Zotero versions without PreferencePanes support
+      const win = Zotero.getMainWindow()
+      if (!win) {
+        Zotero.logError('Zotodo: Could not get main window to open preferences')
+        return
+      }
+      const io = { pane: paneID, action }
+      win.openDialog(
+        'chrome://zotodo/content/options.xhtml',
+        'zotodo-options',
+        `chrome,titlebar,toolbar,centerscreen,dialog=no`,
+        io
+      )
+      Zotero.debug('Zotodo: preferences dialog opened (legacy)')
     }
-    const io = { pane: paneID, action }
-    win.openDialog(
-      'chrome://zotodo/content/options.xhtml',
-      'zotodo-options',
-      `chrome,titlebar,toolbar,centerscreen${Zotero.Prefs.get('browser.preferences.instantApply', true) ? 'dialog=no' : 'modal'}`,
-      io
-    )
-    Zotero.debug('Zotodo: preferences dialog opened')
   }
 
   public makeTaskForSelectedItems() {

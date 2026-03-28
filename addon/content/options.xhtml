@@ -1,13 +1,9 @@
 <?xml version="1.0"?>
-<?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
-<?xml-stylesheet href="chrome://zotero-platform/content/preferences.css"?>
 
-<prefwindow id="zotodo-pref" title="Zotodo Preferences" data-l10n-id="zotodo-preferences-window" xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul" xmlns:html="http://www.w3.org/1999/xhtml" onload="Zotero.Zotodo.Options.updatePreferenceWindow('init-all');">
+<vbox id="zotodo-pref" data-l10n-id="zotodo-preferences-window" xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul" xmlns:html="http://www.w3.org/1999/xhtml" onload="Zotero?.Zotodo?.Options?.updatePreferenceWindow('init-all');">
   <linkset>
     <html:link rel="localization" href="zotodo-preferences.ftl"/>
   </linkset>
-
-  <prefpane label="Zotodo Preferences" data-l10n-id="zotodo-preferences-pane" id="zotodo-prefpane">
     <preferences>
       <preference id="pref-zotodo-automatic-add" name="extensions.zotodo.automatic_add" type="bool"/>
       <preference id="pref-zotodo-ignore-collections" name="extensions.zotodo.ignore_collections" type="string"/>
@@ -79,6 +75,36 @@
       <textbox id="id-zotodo-ignore-collections" preference="pref-zotodo-ignore-collections" flex="1"/>
     </groupbox>
 
-    <script src="chrome://zotodo/content/options.js"/>
-  </prefpane>
-</prefwindow>
+  <html:script>
+  //<![CDATA[
+  (function () {
+    class Options {
+      updatePreferenceWindow(which) {
+        Zotero.debug("Zotodo: updatePreferenceWindow called with '" + which + "'");
+        switch (which) {
+          case "init-all":
+            this.disablePref("include_note", "note-format", false);
+            this.disablePref("set_due", "due-string", false);
+            break;
+          case "include_note":
+            this.disablePref("include_note", "note-format", true);
+            break;
+          case "set_due":
+            this.disablePref("set_due", "due-string", true);
+            break;
+          default:
+            Zotero.logError("Unexpected preference value: " + which);
+        }
+      }
+      disablePref(setting_name, to_disable, revert) {
+        let val = document.getElementById(setting_name).value;
+        if (revert) val = !val;
+        Zotero.debug("Zotodo: disablePref setting='" + setting_name + "', target='" + to_disable + "', enabled=" + val);
+        document.getElementById("id-zotodo-" + to_disable).disabled = !val;
+      }
+    }
+    if (!Zotero.Zotodo.Options) Zotero.Zotodo.Options = new Options();
+  })();
+  //]]>
+  </html:script>
+</vbox>

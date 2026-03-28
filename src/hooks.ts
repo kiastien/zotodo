@@ -126,6 +126,17 @@ async function onStartup() {
   addon.data.zotodo.init();
   debug("Initialized Zotodo instance");
 
+  if (Zotero.PreferencePanes) {
+    const paneID = await Zotero.PreferencePanes.register({
+      pluginID: config.addonID,
+      src: rootURI + "content/options.xhtml",
+      label: config.addonName,
+      defaultXUL: true,
+    });
+    addon.data.preferencesPaneID = paneID;
+    debug(`Registered preferences pane: ${paneID}`);
+  }
+
   addon.data.useMenuManager = registerMenus();
   debug(`Menu mode: ${addon.data.useMenuManager ? "MenuManager" : "legacy XUL"}`);
 

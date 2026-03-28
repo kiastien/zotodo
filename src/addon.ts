@@ -10,6 +10,7 @@ class Addon {
     config: typeof config;
     env: Env;
     initialized: boolean;
+    preferencesPaneID?: string;
     useMenuManager: boolean;
     registeredMenuIDs: Array<string | number>;
     zotodo?: Zotodo;
