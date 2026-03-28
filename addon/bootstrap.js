@@ -21,6 +21,8 @@ async function startup({ rootURI }, reason) {
     `${rootURI}/content/scripts/__addonRef__.js`,
     ctx,
   );
+
+  Zotero.debug("Bootstrap startup complete");
   await Zotero.__addonInstance__.hooks.onStartup();
 }
 

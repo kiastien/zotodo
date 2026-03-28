@@ -19,6 +19,7 @@ class Addon {
   public api: object;
 
   constructor() {
+    Zotero.debug("Zotodo: Constructing Addon instance");
     this.data = {
       alive: true,
       config,
@@ -29,6 +30,7 @@ class Addon {
     };
     this.hooks = hooks;
     this.api = {};
+    Zotero.debug(`Zotodo: Addon constructed (env=${this.data.env})`);
   }
 }
 

@@ -6,6 +6,7 @@ interface ZoteroBooleanPreference {
 
 class Options { // tslint:disable-line:variable-name
   public updatePreferenceWindow(which: string) {
+    Zotero.debug(`Zotodo: updatePreferenceWindow called with '${which}'`)
     switch (which) {
       case 'init-all':
         this.disablePref('include_note', 'note-format', false)
@@ -30,6 +31,7 @@ class Options { // tslint:disable-line:variable-name
       setting_val = !setting_val
     }
 
+    Zotero.debug(`Zotodo: disablePref setting='${setting_name}', target='${to_disable}', enabled=${setting_val}`)
     (document.getElementById(
       `id-zotodo-${to_disable}`
     ) as HTMLInputElement).disabled = !setting_val

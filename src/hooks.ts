@@ -1,8 +1,14 @@
 import { config } from "../package.json";
 import { Zotodo } from "./zotodo";
 
+function debug(message: string): void {
+  Zotero.debug(`Zotodo: ${message}`);
+}
+
 function registerMenus(): boolean {
+  debug("Attempting to register menus with MenuManager");
   if (!Zotero.MenuManager || typeof Zotero.MenuManager.registerMenu !== "function") {
+    debug("MenuManager API not available; falling back to legacy menus");
     return false;
   }
 
@@ -34,6 +40,7 @@ function registerMenus(): boolean {
     });
 
     addon.data.registeredMenuIDs.push(createTaskMenuID, preferencesMenuID);
+    debug(`Registered MenuManager menus: ${String(createTaskMenuID)}, ${String(preferencesMenuID)}`);
     return true;
   }
   catch (err) {
@@ -44,7 +51,9 @@ function registerMenus(): boolean {
 }
 
 function unregisterMenus(): void {
+  debug("Unregistering all tracked MenuManager menus");
   if (!Zotero.MenuManager || typeof Zotero.MenuManager.unregisterMenu !== "function") {
+    debug("MenuManager unregister API unavailable; clearing tracked IDs only");
     addon.data.registeredMenuIDs = [];
     return;
   }
@@ -56,6 +65,7 @@ function unregisterMenus(): void {
     }
     try {
       Zotero.MenuManager.unregisterMenu(menuID);
+      debug(`Unregistered menu ID: ${String(menuID)}`);
     }
     catch (err) {
       Zotero.logError(`Zotodo: failed to unregister menu ${String(menuID)}: ${String(err)}`);
@@ -64,6 +74,7 @@ function unregisterMenus(): void {
 }
 
 function addLegacyMenus(window: Window): void {
+  debug("Adding legacy XUL menus to main window");
   const doc = window.document;
 
   const itemMenuItem = doc.createXULElement("menuitem");
@@ -94,6 +105,7 @@ function addLegacyMenus(window: Window): void {
 }
 
 function removeLegacyMenus(window: Window): void {
+  debug("Removing legacy XUL menus from main window");
   const doc = window.document;
   doc.getElementById("zotodo-itemmenu-make-task")?.remove();
   doc.getElementById("id-zotodo-separator")?.remove();
@@ -101,38 +113,50 @@ function removeLegacyMenus(window: Window): void {
 }
 
 async function onStartup() {
+  debug("onStartup called; waiting for Zotero initialization promises");
   await Promise.all([
     Zotero.initializationPromise,
     Zotero.unlockPromise,
     Zotero.uiReadyPromise,
   ]);
+  debug("Zotero initialization promises resolved");
 
   addon.data.zotodo = new Zotodo();
+  debug("Created Zotodo instance");
   addon.data.zotodo.init();
+  debug("Initialized Zotodo instance");
 
   addon.data.useMenuManager = registerMenus();
+  debug(`Menu mode: ${addon.data.useMenuManager ? "MenuManager" : "legacy XUL"}`);
 
   await Promise.all(Zotero.getMainWindows().map((win: _ZoteroTypes.MainWindow) => onMainWindowLoad(win)));
+  debug("Main-window load hooks completed for all open windows");
 
   addon.data.initialized = true;
+  debug("Addon startup complete; initialized=true");
 }
 
 async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
+  debug("onMainWindowLoad called");
   win.MozXULElement?.insertFTLIfNeeded("zotodo-mainWindow.ftl");
   if (!addon.data.useMenuManager) {
     addLegacyMenus(win);
   }
   addon.data.zotodo?.onWindowLoad(win);
+  debug("onMainWindowLoad completed");
 }
 
 async function onMainWindowUnload(win: _ZoteroTypes.MainWindow): Promise<void> {
+  debug("onMainWindowUnload called");
   if (!addon.data.useMenuManager) {
     removeLegacyMenus(win);
   }
   addon.data.zotodo?.onWindowUnload(win);
+  debug("onMainWindowUnload completed");
 }
 
 function onShutdown(): void {
+  debug("onShutdown called");
   unregisterMenus();
 
   Zotero.getMainWindows().forEach((win: _ZoteroTypes.MainWindow) => {
@@ -144,10 +168,12 @@ function onShutdown(): void {
 
   if (addon.data.zotodo?.notifierID) {
     Zotero.Notifier.unregisterObserver(addon.data.zotodo.notifierID);
+    debug(`Notifier unregistered: ${String(addon.data.zotodo.notifierID)}`);
   }
 
   addon.data.alive = false;
   delete (Zotero as any)[config.addonInstance];
+  debug("Addon shutdown complete; instance removed from Zotero namespace");
 }
 
 export default {
