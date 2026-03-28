@@ -109,9 +109,8 @@ const mainWindowObserver = {
   },
 }
 
-export function startup({ version, rootURI: rtURI }, reason) {
+async function startup({ id, version, resourceURI, rootURI }, reason) {
   Zotero.debug(`Zotodo: startup ${version}, reason: ${String(reason)}`)
-  rootURI = rtURI
 
   services.aomStartup = Cc['@mozilla.org/addons/addon-manager-startup;1'].getService(Ci.amIAddonManagerStartup)
 
@@ -138,7 +137,7 @@ export function startup({ version, rootURI: rtURI }, reason) {
   Zotero.debug('Zotodo: startup complete.')
 }
 
-export function shutdown(reason) {
+function shutdown(reason) {
   Zotero.debug(`Zotodo: shutdown, reason: ${String(reason)}`)
 
   if (windowObserverID) {
@@ -169,11 +168,11 @@ export function shutdown(reason) {
   Zotero.debug('Zotodo: shutdown complete.')
 }
 
-export function install(reason) {
-  Zotero.debug(`Zotodo: install, reason: ${String(reason)}`)
+function install(data, reason) {
+  Zotero.debug(`Zotodo: install, reason: ${String(reason)}, data: ${JSON.stringify(data)}`)
 }
 
-export function uninstall(reason) {
+function uninstall(reason) {
   Zotero.debug(`Zotodo: uninstall, reason: ${String(reason)}`)
 }
 
