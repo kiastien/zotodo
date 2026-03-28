@@ -6,6 +6,8 @@ let windowObserverID = null
 let useMenuManager = false
 const registeredMenuIDs = []
 const services = {} // To store Cc and Services if needed
+const ADDON_ID = 'zotodov8@zotero.org'
+const WINDOW_OBSERVER_NAME = 'Zotodo-window-observer'
 
 function registerMenus() {
   if (!Zotero.MenuManager || typeof Zotero.MenuManager.registerMenu !== 'function') {
@@ -20,7 +22,7 @@ function registerMenus() {
       menus: [
         {
           menuType: 'menuitem',
-          label: 'Create Todoist task',
+          l10nID: 'zotodo-menu-create-task',
           onCommand: () => {
             if (zotodoInstance && typeof zotodoInstance.makeTaskForSelectedItems === 'function') {
               zotodoInstance.makeTaskForSelectedItems()
@@ -38,14 +40,8 @@ function registerMenus() {
       menus: [
         {
           menuType: 'menuitem',
-          l10nID: 'zotodo-preferences',
-              onShowing: (_event, context) => {
-                Zotero.debug("onShowing");
-                Zotero.debug(Object.keys(context));
-          },
-              onCommand: (_event, context) => {
-            Zotero.debug("onCommand");
-            Zotero.debug(Object.keys(context));
+          l10nID: 'zotodo-menu-preferences',
+          onCommand: () => {
             if (zotodoInstance && typeof zotodoInstance.openPreferenceWindow === 'function') {
               zotodoInstance.openPreferenceWindow()
             }
@@ -109,18 +105,24 @@ const mainWindowObserver = {
   },
 }
 
-async function startup({ id, version, resourceURI, rootURI }, reason) {
+async function startup({ id, version, resourceURI, rootURI: startupRootURI }, reason) {
   Zotero.debug(`Zotodo: startup ${version}, reason: ${String(reason)}`)
+
+  const addonRootURI = startupRootURI || (resourceURI && resourceURI.spec)
+  if (!addonRootURI) {
+    throw new Error('Zotodo: startup root URI is missing')
+  }
+  rootURI = addonRootURI
 
   services.aomStartup = Cc['@mozilla.org/addons/addon-manager-startup;1'].getService(Ci.amIAddonManagerStartup)
 
-  const manifestURI = Services.io.newURI(`${rootURI}manifest.json`)
+  const manifestURI = Services.io.newURI(`${addonRootURI}manifest.json`)
   Zotero.debug(`Zotodo: Registering chrome with manifest: ${manifestURI.spec}`)
 
   chromeHandle = services.aomStartup.registerChrome(manifestURI, [
     ['content', 'zotodo', 'content/'],
     ['locale', 'zotodo', 'en-US', 'locale/en-US/'],
-    ['skin', 'zotodo', 'default', 'skin/default/'],
+    ['skin', 'zotodo', 'default', 'skin/'],
   ])
 
   zotodoInstance = new Zotodo()
@@ -137,7 +139,7 @@ async function startup({ id, version, resourceURI, rootURI }, reason) {
   Zotero.debug('Zotodo: startup complete.')
 }
 
-function shutdown(reason) {
+async function shutdown({ id, version, resourceURI, rootURI }, reason) {
   Zotero.debug(`Zotodo: shutdown, reason: ${String(reason)}`)
 
   if (windowObserverID) {
@@ -172,17 +174,18 @@ function install(data, reason) {
   Zotero.debug(`Zotodo: install, reason: ${String(reason)}, data: ${JSON.stringify(data)}`)
 }
 
-function uninstall(reason) {
+async function uninstall(data, reason) {
   Zotero.debug(`Zotodo: uninstall, reason: ${String(reason)}`)
 }
 
 function onMainWindowLoad({ window }) {
   Zotero.debug(`Zotodo: onMainWindowLoad for window ID ${window.document.documentElement.id}`)
   const doc = window.document
+  window.MozXULElement?.insertFTLIfNeeded('zotodo.ftl')
 
   const itemMenuItem = doc.createXULElement('menuitem')
   itemMenuItem.id = 'zotodo-itemmenu-make-task'
-  itemMenuItem.setAttribute('label', 'Create Todoist task')
+  itemMenuItem.setAttribute('data-l10n-id', 'zotodo-menu-create-task')
   itemMenuItem.addEventListener('command', () => {
     if (zotodoInstance && typeof zotodoInstance.makeTaskForSelectedItems === 'function') {
       zotodoInstance.makeTaskForSelectedItems()
@@ -208,7 +211,7 @@ function onMainWindowLoad({ window }) {
 
   const toolsMenuItem = doc.createXULElement('menuitem')
   toolsMenuItem.id = 'zotodo-toolsmenu-options'
-  toolsMenuItem.setAttribute('label', 'Zotodo Preferences')
+  toolsMenuItem.setAttribute('data-l10n-id', 'zotodo-menu-preferences')
   toolsMenuItem.addEventListener('command', () => {
     if (zotodoInstance && typeof zotodoInstance.openPreferenceWindow === 'function') {
       zotodoInstance.openPreferenceWindow()

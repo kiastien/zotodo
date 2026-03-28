@@ -8,14 +8,6 @@ const MAX_PRIORITY = 5
 const ADDON_ID = 'zotodov8@zotero.org'
 const WINDOW_OBSERVER_NAME = 'Zotodo-window-observer'
 
-const observerID = Zotero.Prefs.registerObserver(
-  "extensions.myplugin.mykey",
-  (value) => {
-    Zotero.debug(`Preference changed to ${value}`);
-  },
-  true
-);
-
 // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-inner-declarations, prefer-arrow/prefer-arrow-functions
 function patch(object: any, method: string, patcher: (original: any) => any) {
   if (object[method][monkey_patch_marker]) return
@@ -726,3 +718,7 @@ class Zotodo {
     // Example: this.removeMenuItems(window);
   }
 }
+
+(globalThis as any).Zotodo = Zotodo
+
+export {}
