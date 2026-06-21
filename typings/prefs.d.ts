@@ -13,7 +13,6 @@ declare namespace _ZoteroTypes {
       "note_format": string;
       "due_string": string;
       "priority": number;
-      "project": string;
       "section": string;
       "set_due": boolean;
       "labels": string;

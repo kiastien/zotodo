@@ -10,7 +10,10 @@ and powered by [`zotero-plugin-scaffold`](https://github.com/northword/zotero-pl
 - Generate Todoist tasks for existing papers
 - Templating of task and optional task comment, including paper information (authors, title,
   abstract, etc.)
-- Customizable project, section, and due date settings
+- Tasks are added to the Todoist project matching the collection the item is filed in
+  (falling back to the library name when the item isn't in a collection); the project is
+  created automatically if it doesn't exist yet
+- Customizable section and due date settings
 - Customizable labels for tasks
 - Generate Zotero select links
 - Generate Zotero PDF opening links

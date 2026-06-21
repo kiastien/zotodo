@@ -16,9 +16,6 @@ zotodo-todoist-settings =
 zotodo-todoist-token =
     .value = Todoist API token
 
-zotodo-project =
-    .value = Project for new tasks
-
 zotodo-section =
     .value = Section for new tasks (leave empty for none)
 
