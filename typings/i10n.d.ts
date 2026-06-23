@@ -15,7 +15,6 @@ export type FluentMessageId =
   | 'zotodo-preferences-pane'
   | 'zotodo-preferences-window'
   | 'zotodo-priority'
-  | 'zotodo-project'
   | 'zotodo-section'
   | 'zotodo-set-due'
   | 'zotodo-task-format'

@@ -151,118 +151,125 @@ class TodoistAPI {
     const icon = `chrome://zotero/skin/spinner-16px${Zotero.hiDPI ? '@2x' : ''
     }.png`
     const progWin = show(icon, 'Creating task', 'Making Todoist task for item')
-    Zotero.debug(`Zotodo: createTask started (project='${task_data.project_name}', section='${task_data.section_name || ''}', labels=${task_data.label_names.length})`)
-    if (this.token == null || this.token === '') {
-      this.token = getPref('todoist_token')
-      Zotero.debug(`Zotodo: Refreshed Todoist token from prefs (present=${this.token != null && this.token !== ''})`)
-    }
+    try {
+      Zotero.debug(`Zotodo: createTask started (project='${task_data.project_name}', section='${task_data.section_name || ''}', labels=${task_data.label_names.length})`)
+      if (this.token == null || this.token === '') {
+        this.token = getPref('todoist_token')
+        Zotero.debug(`Zotodo: Refreshed Todoist token from prefs (present=${this.token != null && this.token !== ''})`)
+      }
 
-    const project_id = await this.getProjectId(task_data.project_name, progWin)
-    if (project_id == null) {
-      Zotero.debug(`Zotodo: Unable to resolve project '${task_data.project_name}'`)
-      return
-    }
-    Zotero.debug(`Zotodo: Resolved project '${task_data.project_name}' -> ${project_id}`)
-
-    let section_id = null
-    if (task_data.section_name != null) {
-      section_id = await this.getSectionId(
-        task_data.section_name,
-        task_data.project_name,
-        progWin
-      )
-      if (section_id == null) {
-        Zotero.debug(`Zotodo: Unable to resolve section '${task_data.section_name}'`)
+      const project_id = await this.getProjectId(task_data.project_name, progWin)
+      if (project_id == null) {
+        Zotero.debug(`Zotodo: Unable to resolve project '${task_data.project_name}'`)
         return
       }
-      Zotero.debug(`Zotodo: Resolved section '${task_data.section_name}' -> ${section_id}`)
-    }
+      Zotero.debug(`Zotodo: Resolved project '${task_data.project_name}' -> ${project_id}`)
 
-    const label_names = []
-    for (const label_name of task_data.label_names) {
-      const resolvedLabelName = await this.getLabelId(label_name, progWin)
-      if (resolvedLabelName == null) {
-        Zotero.debug(`Zotodo: Unable to resolve label '${label_name}'`)
-        return
+      let section_id = null
+      if (task_data.section_name != null) {
+        section_id = await this.getSectionId(
+          task_data.section_name,
+          task_data.project_name,
+          progWin
+        )
+        if (section_id == null) {
+          Zotero.debug(`Zotodo: Unable to resolve section '${task_data.section_name}'`)
+          return
+        }
+        Zotero.debug(`Zotodo: Resolved section '${task_data.section_name}' -> ${section_id}`)
       }
 
-      label_names.push(label_name)
-      Zotero.debug(`Zotodo: Resolved label '${label_name}'`)
-    }
+      const label_names = []
+      for (const label_name of task_data.label_names) {
+        const resolvedLabelName = await this.getLabelId(label_name, progWin)
+        if (resolvedLabelName == null) {
+          Zotero.debug(`Zotodo: Unable to resolve label '${label_name}'`)
+          return
+        }
 
-    const createPayload: { [k: string]: any } = {
-      content: task_data.contents,
-      project_id,
-      priority: task_data.priority,
-    }
-
-    if (label_names.length > 0) {
-      createPayload.labels = label_names
-    }
-
-    if (section_id != null) {
-      createPayload.section_id = section_id
-    }
-
-    if (task_data.due_string != null) {
-      createPayload.due_string = task_data.due_string
-    }
-
-    const createHeaders = {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${this.token}`,
-    }
-
-    const createResponse = await Zotero.HTTP.request( // Use Zotero.HTTP for Z7
-      'POST',
-      'https://api.todoist.com/api/v1/tasks',
-      {
-        headers: createHeaders,
-        body: JSON.stringify(createPayload),
-      }
-    )
-
-    if (!this.responseOk(createResponse)) {
-      const err = this.responseText(createResponse)
-      const msg = `Error creating task: ${createResponse.statusText} ${err}`
-      showError(msg, progWin)
-      Zotero.logError(msg)
-      return
-    }
-    Zotero.debug(`Zotodo: Task created successfully for '${task_data.contents}'`)
-
-    if (task_data.note != null) {
-      const task_id = (JSON.parse(this.responseText(createResponse)) as { id: TodoistID }).id
-      const notePayload = {
-        content: task_data.note,
-        task_id,
+        label_names.push(label_name)
+        Zotero.debug(`Zotodo: Resolved label '${label_name}'`)
       }
 
-      const noteHeaders = {
+      const createPayload: { [k: string]: any } = {
+        content: task_data.contents,
+        project_id,
+        priority: task_data.priority,
+      }
+
+      if (label_names.length > 0) {
+        createPayload.labels = label_names
+      }
+
+      if (section_id != null) {
+        createPayload.section_id = section_id
+      }
+
+      if (task_data.due_string != null) {
+        createPayload.due_string = task_data.due_string
+      }
+
+      const createHeaders = {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${this.token}`,
       }
 
-      const noteResponse = await Zotero.HTTP.request( // Use Zotero.HTTP for Z7
+      const createResponse = await Zotero.HTTP.request( // Use Zotero.HTTP for Z7
         'POST',
-        'https://api.todoist.com/api/v1/comments',
+        'https://api.todoist.com/api/v1/tasks',
         {
-          headers: noteHeaders,
-          body: JSON.stringify(notePayload),
+          headers: createHeaders,
+          body: JSON.stringify(createPayload),
         }
       )
 
-      if (!this.responseOk(noteResponse)) {
-        const err = this.responseText(noteResponse)
-        const msg = `Error adding comment: ${noteResponse.statusText} ${err}`
+      if (!this.responseOk(createResponse)) {
+        const err = this.responseText(createResponse)
+        const msg = `Error creating task: ${createResponse.statusText} ${err}`
         showError(msg, progWin)
         Zotero.logError(msg)
         return
       }
-      Zotero.debug(`Zotodo: Note/comment added for created task '${task_data.contents}'`)
+      Zotero.debug(`Zotodo: Task created successfully for '${task_data.contents}'`)
+
+      if (task_data.note != null) {
+        const task_id = (JSON.parse(this.responseText(createResponse)) as { id: TodoistID }).id
+        const notePayload = {
+          content: task_data.note,
+          task_id,
+        }
+
+        const noteHeaders = {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.token}`,
+        }
+
+        const noteResponse = await Zotero.HTTP.request( // Use Zotero.HTTP for Z7
+          'POST',
+          'https://api.todoist.com/api/v1/comments',
+          {
+            headers: noteHeaders,
+            body: JSON.stringify(notePayload),
+          }
+        )
+
+        if (!this.responseOk(noteResponse)) {
+          const err = this.responseText(noteResponse)
+          const msg = `Error adding comment: ${noteResponse.statusText} ${err}`
+          showError(msg, progWin)
+          Zotero.logError(msg)
+          return
+        }
+        Zotero.debug(`Zotodo: Note/comment added for created task '${task_data.contents}'`)
+      }
+      showSuccess(task_data, progWin)
+      Zotero.debug(`Zotodo: createTask finished successfully for '${task_data.contents}'`)
+    } catch (e) {
+      // Never let an exception leave the "Creating task" spinner hanging.
+      const msg = `Unexpected error creating task: ${String(e)}`
+      showError(msg, progWin)
+      Zotero.logError(`Zotodo: ${msg}`)
     }
-    showSuccess(task_data, progWin)
-    Zotero.debug(`Zotodo: createTask finished successfully for '${task_data.contents}'`)
   }
 
   private async getSectionId(
@@ -316,16 +323,15 @@ class TodoistAPI {
     }
 
     if (!(project_name in this.projects)) {
-      // const project_result = await this.createProject(
-      //   project_name,
-      //   progress_win
-      // )
-      // if (!project_result) {
-      //   return null
-      // }
-      // Zotero.debug(`Zotodo: Created missing project '${project_name}'`)
-      Zotero.debug(`Zotodo: Project '${project_name}' not found in cache and auto-creation is disabled.`)
-      return null
+      Zotero.debug(`Zotodo: Project '${project_name}' not found in cache; creating it.`)
+      const project_result = await this.createProject(
+        project_name,
+        progress_win
+      )
+      if (!project_result) {
+        return null
+      }
+      Zotero.debug(`Zotodo: Created missing project '${project_name}'`)
     }
 
     return this.projects[project_name]
@@ -399,41 +405,41 @@ class TodoistAPI {
     return true
   }
 
-  // private async createProject(
-  //   project_name: string,
-  //   progWin: object
-  // ): Promise<boolean> {
-  //   Zotero.debug(`Zotodo: Creating project '${project_name}'`)
-  //   const headers = {
-  //     'Content-Type': 'application/json',
-  //     Authorization: `Bearer ${this.token}`,
-  //   }
+  private async createProject(
+    project_name: string,
+    progWin: object
+  ): Promise<boolean> {
+    Zotero.debug(`Zotodo: Creating project '${project_name}'`)
+    const headers = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${this.token}`,
+    }
 
-  //   const payload = { name: project_name }
-  //   const response = await Zotero.HTTP.request( // Use Zotero.HTTP for Z7
-  //     'POST',
-  //     'https://api.todoist.com/api/v1/projects',
-  //     {
-  //       headers,
-  //       body: JSON.stringify(payload),
-  //     }
-  //   )
+    const payload = { name: project_name }
+    const response = await Zotero.HTTP.request( // Use Zotero.HTTP for Z7
+      'POST',
+      'https://api.todoist.com/api/v1/projects',
+      {
+        headers,
+        body: JSON.stringify(payload),
+      }
+    )
 
-  //   if (!response.ok) {
-  //     const err = response.text
-  //     const msg = `Error creating project ${project_name}: ${response.statusText} ${err}`
-  //     showError(msg, progWin)
-  //     Zotero.logError(msg)
-  //     return false
-  //   }
+    if (!this.responseOk(response)) {
+      const err = this.responseText(response)
+      const msg = `Error creating project ${project_name}: ${response.statusText} ${err}`
+      showError(msg, progWin)
+      Zotero.logError(msg)
+      return false
+    }
 
-  //   const data = JSON.parse(response.text as string)
-  //   if (!this.projects) this.projects = {}
-  //   this.projects[data.name] = data.id
-  //   Zotero.debug(`Zotodo: Project created '${data.name}' -> ${data.id}`)
+    const data = JSON.parse(this.responseText(response))
+    if (!this.projects) this.projects = {}
+    this.projects[data.name] = data.id
+    Zotero.debug(`Zotodo: Project created '${data.name}' -> ${data.id}`)
 
-  //   return true
-  // }
+    return true
+  }
 
   private async createLabel(
     label_name: string,
@@ -652,14 +658,13 @@ export class Zotodo {
     const ignore_collections: string[] = ignore_collections_string ? ignore_collections_string.split(',') : []
 
     const priority: number = MAX_PRIORITY - getPref('priority')
-    const project_name: string = getPref('project')
     const section_name: string = getPref('section')
 
     const set_due: boolean = getPref('set_due')
     const include_note: boolean = getPref('include_note')
     const note_format: string = getPref('note_format')
     const task_format: string = getPref('task_format')
-    Zotero.debug(`Zotodo: Preference snapshot loaded (project='${project_name}', section='${section_name}', include_note=${include_note}, set_due=${set_due})`)
+    Zotero.debug(`Zotodo: Preference snapshot loaded (section='${section_name}', include_note=${include_note}, set_due=${set_due})`)
 
     const item_collections = item
       .getCollections()
@@ -714,6 +719,18 @@ export class Zotodo {
     if (library && library.libraryType === 'group') { // Check if library exists
       library_path = Zotero.URI.getLibraryPath(item.libraryID)
     }
+
+    // Route the task to a Todoist project named after the collection the item is
+    // filed in (e.g. collection "MAST90108" -> Todoist project "MAST90108"). Fall
+    // back to the library name when the item isn't in any collection.
+    let project_name: string = (library && library.name) ? library.name : ''
+    if (item_collections.length > 0) {
+      project_name = item_collections[0]
+      if (item_collections.length > 1) {
+        Zotero.debug(`Zotodo: Item is in ${item_collections.length} collections (${item_collections.join(', ')}); using first: '${project_name}'`)
+      }
+    }
+    Zotero.debug(`Zotodo: Using '${project_name}' as Todoist project (from ${item_collections.length > 0 ? 'collection' : 'library'})`)
 
     const select_uri = `zotero://select/${library_path}/items/${item_id}`
     let open_uri = ''
